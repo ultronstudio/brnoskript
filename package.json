@@ -12,9 +12,9 @@
   },
   "scripts": {
     "build": "tsc -p .",
-    "repl": "node dist/cli.js",
+    "build:all": "npm run build && npm run build:web",
     "run": "node dist/cli.js",
-    "run:web": "npx http-server ./examples -c-1",
+    "web": "npx http-server ./examples -c-1",
     "build:web": "rollup -c rollup.config.mjs"
   },
   "devDependencies": {
