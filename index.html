@@ -3,33 +3,257 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>BrnoSkript Web Test</title>
+    <title>BrnoSkript – Webový test</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/3/32/Brno_(znak).svg" type="image/svg+xml" />
     <meta name="author" content="Petr Vurm" />
     <meta name="description" content="Testovací stránka pro BrnoSkript ve webovém prohlížeči" />
+    <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/3/32/Brno_(znak).svg" type="image/svg+xml" />
+
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #111111;
+            --muted: #666666;
+            --accent: #d70000;
+            --accent-light: #ef3b3b;
+            --round: 12px;
+            --shadow: 0 4px 18px rgba(0, 0, 0, .08);
+        }
+
+        /* SVĚTLÉ POZADÍ */
+        html,
+        body {
+            margin: 0
+        }
+
+        body {
+            padding: 24px;
+            background: var(--bg);
+            /* žádný tmavý gradient */
+            color: var(--text);
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* HEADER – červený pruh, bílý text */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 16px;
+            padding-right: 16px;
+            height: 60px;
+            background: var(--accent);
+            color: #fff;
+            border-radius: var(--round);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        footer {
+            margin-top: 24px;
+            font-size: 13px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--accent-light);
+            text-decoration: underline;
+        }
+
+        /* Karty a ovládání – světlé */
+        .card {
+            background: #ffffff;
+            border: 1px solid #e5e5e5;
+            border-radius: var(--round);
+            box-shadow: var(--shadow);
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .controls button {
+            border: 1px solid #e5e5e5;
+            background: var(--accent);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer
+        }
+
+        .controls button.secondary {
+            background: #fff;
+            color: var(--accent)
+        }
+
+        /* LOG PANEL – bílý, čitelné černé písmo */
+        #log {
+            height: 55vh;
+            overflow-y: auto;
+            background: #ffffff;
+            color: var(--text);
+            border: 1px solid #e5e5e5;
+            border-radius: var(--round);
+            padding: 14px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+
+        .log-line {
+            display: flex;
+            gap: 10px
+        }
+
+        .ts {
+            color: var(--muted)
+        }
+
+        .ok {
+            color: inherit
+        }
+
+        /* ✅ už NE červená */
+        .warn {
+            color: #8a7e00
+        }
+
+        /* tlumeně červená pro „pozor“ v brandu */
+        .err {
+            color: #d70000;
+            font-weight: 600
+        }
+
+        /* Chipy – světlé */
+        .scripts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px
+        }
+
+        .chip {
+            border: 1px solid #e5e5e5;
+            background: #fafafa;
+            color: var(--text);
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+            font-size: 12px;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>Test BrnoSkriptu ve webu</h1>
+    <header>
+        <h1>BrnoSkript</h1>
+    </header>
 
-    <!-- tvůj build -->
+    <section class="card controls">
+        <button id="btn-run">Spustit znovu</button>
+        <button id="btn-clear" class="secondary">Vyčistit výstup</button>
+    </section>
+
+    <section class="card">
+        <div class="muted">Detekované BrnoSkript tagy:</div>
+        <div id="script-list" class="scripts"></div>
+    </section>
+
+    <section class="card">
+        <pre id="log"></pre>
+    </section>
+
+    <footer>
+        © <span id="year"></span> <a href="https://petrvurm.cz/?utm_source=brnoscript&utm_medium=website&utm_campaign=footer_credit" target="_blank">Petr Vurm</a> · <a href="https://opensource.org/licenses/Apache-2.0" target="_blank">Apache 2.0</a>
+    </footer>
+
+    <!-- Loader a demo skripty -->
     <script src="./dist/brnoscript.browser.js"></script>
+    <script type="text/brnoscript" src="examples/hello.brno"></script>
+    <script type="text/brnoscript">
+    nech x = 10 piča
+    vyblij("inline " + x) piča
+  </script>
 
-    <!-- Inline skript -->
-    <!-- <script type="text/brnoscript">
-        nech x = 10 piča
-        vyblij("Inline běží! " + x) piča
-    </script> -->
-
-    <!-- loader pro externí skript (hello.brno) -->
     <script>
-        (async () => {
-            const run = window.BrnoSkript.runSource;
-            const resp = await fetch("./examples/hello.brno");
-            const code = await resp.text();
-            await run(code, location.href);
+        // Nastavení aktuálního roku ve footeru
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // === Výstupní log ===
+        (function () {
+            const logEl = document.getElementById('log');
+            const orig = { log: console.log, warn: console.warn, error: console.error };
+
+            function push(kind, args) {
+                const msg = Array.from(args).map(v =>
+                    v instanceof Error ? (v.stack || v.message) : typeof v === 'object' ? JSON.stringify(v) : String(v)
+                ).join(' ');
+                const div = document.createElement('div');
+                div.className = `log-line ${kind}`;
+                div.innerHTML = `<span class="ts">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+                logEl.appendChild(div);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+
+            console.log = (...a) => { push('ok', a); orig.log(...a); };
+            console.warn = (...a) => { push('warn', a); orig.warn(...a); };
+            console.error = (...a) => { push('err', a); orig.error(...a); };
+
+            console.log("BrnoSkript web loader ready.");
         })();
+
+        // === Seznam skriptů ===
+        function refreshList() {
+            const list = document.getElementById('script-list');
+            list.innerHTML = '';
+            const scripts = [...document.getElementsByTagName('script')].filter(el => {
+                const type = (el.getAttribute('type') || '').toLowerCase();
+                const src = el.getAttribute('src') || '';
+                return type === 'text/brnoscript' || (!type && /\.brno$/i.test(src));
+            });
+            if (scripts.length === 0) {
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                chip.textContent = '(žádné .brno skripty)';
+                list.appendChild(chip);
+            } else {
+                for (const s of scripts) {
+                    const chip = document.createElement('div');
+                    chip.className = 'chip';
+                    chip.textContent = s.getAttribute('src') || '[inline]';
+                    list.appendChild(chip);
+                }
+            }
+        }
+        refreshList();
+
+        // === Ovládání ===
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            document.getElementById('log').textContent = '';
+            console.log("Výstup vyčištěn.");
+        });
+
+        document.getElementById('btn-run').addEventListener('click', async () => {
+            const all = Array.from(document.getElementsByTagName('script')).filter(el => {
+                const type = (el.getAttribute('type') || '').toLowerCase();
+                const src = el.getAttribute('src') || '';
+                return type === 'text/brnoscript' || (!type && /\.brno$/i.test(src));
+            });
+
+            for (const el of all) {
+                const src = el.getAttribute('src');
+                const code = src ? await (await fetch(src)).text() : el.textContent;
+                console.log("Spouštím", src || "inline .brno");
+                await window.BrnoSkript.runSource(code, document.baseURI);
+            }
+
+            console.log("Hotovo – rerun všech .brno skriptů.");
+        });
     </script>
 </body>
 

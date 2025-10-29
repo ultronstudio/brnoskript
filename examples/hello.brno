@@ -130,8 +130,8 @@ vyblij( "šmirgl.typy({a:1}) → " + text.spojuj( mapa.keys( šmirgl.typy({a:1})
 
 // === IMPORT (vokno) – obalíme do try/catch, ať skript nespadne, když soubor není ===
 zkus {
-  vyblij("Zkouším importovat examples/modul.brn") piča
-  vokno "examples/modul.brn" piča
+  vyblij("Zkouším importovat modul.brno") piča
+  vokno "modul.brno" piča
 } chyť (e) {
   vyblij("Import selhal (OK, jen test): " + e) piča
 }

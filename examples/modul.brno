@@ -1,0 +1,10 @@
+// examples/modul.brno
+vyblij("📦 Modul.brno byl importován!") piča
+
+nech pozdrav = "Nazdar z modulu!" piča
+
+rob zdvojnasob(n) {
+  vrat n * 2 piča
+}
+
+vyblij("Test funkce z modulu: 21 * 2 = " + zdvojnasob(21)) piča
