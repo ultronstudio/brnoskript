@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="cs">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>BrnoSkript Web Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/3/32/Brno_(znak).svg" type="image/svg+xml" />
+    <meta name="author" content="Petr Vurm" />
+    <meta name="description" content="Testovací stránka pro BrnoSkript ve webovém prohlížeči" />
+</head>
+
+<body>
+    <h1>Test BrnoSkriptu ve webu</h1>
+
+    <!-- tvůj build -->
+    <script src="./dist/brnoscript.browser.js"></script>
+
+    <!-- Inline skript -->
+    <!-- <script type="text/brnoscript">
+        nech x = 10 piča
+        vyblij("Inline běží! " + x) piča
+    </script> -->
+
+    <!-- loader pro externí skript (hello.brno) -->
+    <script>
+        (async () => {
+            const run = window.BrnoSkript.runSource;
+            const resp = await fetch("./examples/hello.brno");
+            const code = await resp.text();
+            await run(code, location.href);
+        })();
+    </script>
+</body>
+
+</html>

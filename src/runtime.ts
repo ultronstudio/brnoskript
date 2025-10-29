@@ -42,7 +42,7 @@ class UserFun implements BrnFun {
   toString() { return `<rob ${this.name}>`; }
 }
 
-/* Loader pro importy (předá CLI) */
+/* Loader pro importy (předá CLI / web loader) */
 export type ModuleLoader = (path: string) => Promise<string>;
 
 /* Volitelné schopnosti (FS apod.) */
@@ -270,7 +270,7 @@ export class Interpreter {
     };
     this.globals.def("text", ns(text));
 
-    /* šalát.* */
+    /* šalát.* — async-aware HOFs */
     const salat: Record<string, BrnFun> = {
       "je":     { arity:1, call:(_,[x])=>Array.isArray(x), toString(){return"<šalát.je>"} },
       "vem":    { arity:2, call:(_,[a,i])=>a?.[Number(i)], toString(){return"<šalát.vem>"} },
@@ -278,9 +278,30 @@ export class Interpreter {
       "sekni":  { arity:1, call:(_,[a])=>a.pop(), toString(){return"<šalát.sekni>"} },
       "otoč":   { arity:1, call:(_,[a])=>a.reverse(), toString(){return"<šalát.otoč>"} },
       "seřaď":  { arity:null, call:(_,[a,cmp])=>a.sort(cmp? (x:any,y:any)=>Number(cmp(x,y)):undefined), toString(){return"<šalát.seřaď>"} },
-      "mapuj":  { arity:2, call:(i,[a,f])=>a.map((x:any,idx:number)=>f.call(i,[x,idx,a])), toString(){return"<šalát.mapuj>"} },
-      "filtruj":{ arity:2, call:(i,[a,f])=>a.filter((x:any,idx:number)=>!!f.call(i,[x,idx,a])), toString(){return"<šalát.filtruj>"} },
-      "spočítej":{arity:3, call:(i,[a,f,init])=>a.reduce((acc:any,x:any,idx:number)=>f.call(i,[acc,x,idx,a]), init), toString(){return"<šalát.spočítej>"} },
+
+      // mapuj: await-uje výsledek callbacku pro každý prvek
+      "mapuj":  { arity:2, call: async (i,[a,f])=>{
+        const out = await Promise.all(a.map(async (x:any,idx:number)=> await f.call(i,[x,idx,a])));
+        return out;
+      }, toString(){return"<šalát.mapuj>"} },
+
+      // filtruj: predicate může vracet Promise
+      "filtruj":{ arity:2, call: async (i,[a,f])=>{
+        const flags = await Promise.all(a.map(async (x:any,idx:number)=> !!(await f.call(i,[x,idx,a]))));
+        const out:any[] = [];
+        for (let j=0;j<a.length;j++) if (flags[j]) out.push(a[j]);
+        return out;
+      }, toString(){return"<šalát.filtruj>"} },
+
+      // spočítej (reduce): sekvenčně await-uje akumulátor
+      "spočítej":{arity:3, call: async (i,[a,f,init])=>{
+        let acc = init;
+        for (let idx=0; idx<a.length; idx++) {
+          acc = await f.call(i,[acc, a[idx], idx, a]);
+        }
+        return acc;
+      }, toString(){return"<šalát.spočítej>"} },
+
       "placka": { arity:1, call:(_,[a])=>a.flat(1), toString(){return"<šalát.placka>"} },
       "dl":     { arity:1, call:(_,[a])=>a.length, toString(){return"<šalát.dl>"} },
     };
@@ -342,38 +363,83 @@ export class Interpreter {
     };
     this.globals.def("regl", ns(regl));
 
-    /* krypto.* */
+    /* ==== KRYPT0: portable base64/uuid/sha256 ==== */
+    function toBase64Portable(str: string): string {
+      if (typeof (globalThis as any).Buffer !== "undefined") {
+        return (globalThis as any).Buffer.from(str, "utf8").toString("base64");
+      }
+      if (typeof (globalThis as any).btoa !== "undefined") {
+        const bytes = new TextEncoder().encode(str);
+        let bin = ""; for (let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+        return (globalThis as any).btoa(bin);
+      }
+      throw new Error("Base64 není v tomto prostředí podporováno");
+    }
+    function fromBase64Portable(b64: string): string {
+      if (typeof (globalThis as any).Buffer !== "undefined") {
+        return (globalThis as any).Buffer.from(b64, "base64").toString("utf8");
+      }
+      if (typeof (globalThis as any).atob !== "undefined") {
+        const bin = (globalThis as any).atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+      }
+      throw new Error("Base64 decode není v tomto prostředí podporováno");
+    }
+
     const krypto: Record<string, BrnFun> = {
       "uuid": { arity:0, call: async ()=>{
         if ((globalThis as any).crypto?.randomUUID) return (globalThis as any).crypto.randomUUID();
-        const { randomBytes } = await import("node:crypto");
-        const b = randomBytes(16);
-        b[6]=(b[6]&0x0f)|0x40; b[8]=(b[8]&0x3f)|0x80;
-        const hex = (buf: Buffer) => [...buf].map(x=>x.toString(16).padStart(2,"0")).join("");
-        const s = hex(b);
-        return `${s.slice(0,8)}-${s.slice(8,12)}-${s.slice(12,16)}-${s.slice(16,20)}-${s.slice(20)}`;
+        if ((globalThis as any).crypto?.getRandomValues) {
+          const b = new Uint8Array(16);
+          (globalThis as any).crypto.getRandomValues(b);
+          b[6]=(b[6]&0x0f)|0x40; b[8]=(b[8]&0x3f)|0x80;
+          const hex = Array.from(b, x=>x.toString(16).padStart(2,"0")).join("");
+          return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+        }
+        try {
+          const { randomBytes } = await import("node:crypto");
+          const b = randomBytes(16);
+          b[6]=(b[6]&0x0f)|0x40; b[8]=(b[8]&0x3f)|0x80;
+          const hex = [...b].map(x=>x.toString(16).padStart(2,"0")).join("");
+          return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+        } catch { /* fallthrough */ }
+        // weak fallback
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c=>{
+          const r = (Math.random()*16)|0, v = c==="x"? r : (r&0x3)|0x8; return v.toString(16);
+        });
       }, toString(){return"<krypto.uuid>"} },
-      "base64":  { arity:1, call:(_,[s])=>Buffer.from(String(s),"utf8").toString("base64"), toString(){return"<krypto.base64>"} },
-      "zbase64": { arity:1, call:(_,[s])=>Buffer.from(String(s),"base64").toString("utf8"), toString(){return"<krypto.zbase64>"} },
+
+      "base64":  { arity:1, call:(_,[s])=>toBase64Portable(String(s)), toString(){return"<krypto.base64>"} },
+      "zbase64": { arity:1, call:(_,[s])=>fromBase64Portable(String(s)), toString(){return"<krypto.zbase64>"} },
+
       "sha256":  { arity:1, call: async (_,[s])=>{
         const data = new TextEncoder().encode(String(s));
         const webc = (globalThis as any).crypto?.subtle;
         if (webc?.digest) {
           const digest = await webc.digest("SHA-256", data);
-          const arr = Array.from(new Uint8Array(digest));
-          return arr.map(b=>b.toString(16).padStart(2,"0")).join("");
+          return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join("");
         }
-        const { createHash } = await import("node:crypto");
-        return createHash("sha256").update(Buffer.from(data)).digest("hex");
+        try {
+          const { createHash } = await import("node:crypto");
+          return createHash("sha256").update(Buffer.from(data)).digest("hex");
+        } catch {
+          throw new Error("SHA-256 není k dispozici v tomto prostředí");
+        }
       }, toString(){return"<krypto.sha256>"} }
     };
     this.globals.def("krypto", ns(krypto));
 
-    /* šichta.* */
+    /* šichta.* (browser-safe) */
+    const hasProcess = typeof (globalThis as any).process !== "undefined";
     const sachta: Record<string, BrnFun> = {
-      "argv": { arity:0, call:()=>process.argv.slice(2), toString(){return"<šichta.argv>"} },
-      "env":  { arity:1, call:(_,[k])=>process.env[String(k)] ?? null, toString(){return"<šichta.env>"} },
-      "konec":{ arity:1, call:(_,[code])=>{ process.exit(Number(code) || 0); }, toString(){return"<šichta.konec>"} },
+      "argv": { arity:0, call:()=> hasProcess ? (process.argv.slice(2)) : [], toString(){return"<šichta.argv>"} },
+      "env":  { arity:1, call:(_,[k])=> hasProcess ? (process.env[String(k)] ?? null) : null, toString(){return"<šichta.env>"} },
+      "konec":{ arity:1, call:(_,[code])=>{
+        if (hasProcess) { process.exit(Number(code) || 0); return null; }
+        throw new Error("šichta.konec není v prohlížeči dostupné");
+      }, toString(){return"<šichta.konec>"} },
     };
     this.globals.def("šichta", ns(sachta));
 
