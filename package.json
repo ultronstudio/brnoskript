@@ -1,5 +1,6 @@
 {
   "name": "brnoskript",
+  "description": "BrnoSkript - jednoduchý skriptovací jazyk s brněnskou syntaxí",
   "author": {
     "name": "Petr Vurm",
     "url": "https://petrvurm.cz"
