@@ -21,6 +21,7 @@ export class Lexer {
         case "]": out.push(this.tok(T.RBracket, "]")); break;
         case ".": out.push(this.tok(T.Dot, ".")); break;
         case ",": out.push(this.tok(T.Comma, ",")); break;
+        case ":": out.push(this.tok(T.Colon, ":")); break;
 
         case "+": {
           if (this.match("+")) { out.push(this.tok(T.PlusPlus, "++")); break; }

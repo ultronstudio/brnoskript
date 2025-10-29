@@ -9,6 +9,7 @@ export type Expr =
   | { k: "Call"; callee: Expr; args: Expr[] }
   | { k: "Postfix"; n: string; op: T }      // x++ / x--
   | { k: "Get"; obj: Expr; name: string }   // obj.name
+  | { k: "FunExpr"; params: string[]; body: Stmt[] } // rob (...) { ... } jako výraz
   ;
 
 export type Stmt =

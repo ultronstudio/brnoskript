@@ -5,6 +5,7 @@ export enum T {
   LParen, RParen, LBrace, RBrace, Comma,
   LBracket, RBracket,
   Dot, // ← tečka
+  Colon, // ← dvojtečka
 
   // Operátory
   Plus, Minus, Star, Slash, Percent,

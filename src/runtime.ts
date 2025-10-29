@@ -9,7 +9,7 @@ class ContinueSig { }
 /* Prostředí */
 class Env {
   private m = new Map<string, any>();
-  constructor(private parent?: Env) { }
+  constructor(private parent?: Env) {}
   def(n: string, v: any): void { this.m.set(n, v); }
   set(n: string, v: any): void {
     if (this.m.has(n)) { this.m.set(n, v); return; }
@@ -191,6 +191,10 @@ export class Interpreter {
           throw new Error(`Arity: čekám ${cal.arity}, dostal ${args.length}`);
         return await cal.call(this, args);
       }
+      case "FunExpr": {
+        // anonymní funkce s uzávěrem
+        return new UserFun("<anon>", e.params, e.body, env);
+      }
     }
   }
 
@@ -209,36 +213,33 @@ export class Interpreter {
     this.globals.def("házej", { arity: 1, call: (_i, [x]) => { throw x; }, toString: () => "<builtin házej>" } as BrnFun);
 
     // typ
-    this.globals.def("typ", {
-      arity: 1, call: (_i, [x]) => {
-        if (x === null) return "null";
-        if (Array.isArray(x)) return "pole";
-        const t = typeof x;
-        if (t === "number") return "číslo";
-        if (t === "string") return "řetězec";
-        if (t === "boolean") return x ? "pravda" : "nepravda";
-        if (t === "function") return "funkce";
-        if (t === "object") return "mapa";
-        return t;
-      }, toString: () => "<builtin typ>"
-    } as BrnFun);
+    this.globals.def("typ", { arity: 1, call: (_i, [x]) => {
+      if (x === null) return "null";
+      if (Array.isArray(x)) return "pole";
+      const t = typeof x;
+      if (t === "number") return "číslo";
+      if (t === "string") return "řetězec";
+      if (t === "boolean") return x ? "pravda" : "nepravda";
+      if (t === "function") return "funkce";
+      if (t === "object") return "mapa";
+      return t;
+    }, toString: () => "<builtin typ>" } as BrnFun);
 
-    // __arr (array literal)
+    // __arr: pole literál
     this.globals.def("__arr", {
-      arity: null,
-      call: (_i, args) => args,
-      toString: () => "<builtin __arr>"
+      arity: null, call: (_i, args) => args, toString: () => "<builtin __arr>"
     } as BrnFun);
-  }
 
-  private objectOf(dict: Record<string, BrnFun>): BrnFun {
-    const box: any = {};
-    for (const [k, v] of Object.entries(dict)) box[k] = v;
-    return {
-      arity: 1,
-      call: (_i, [name]) => box?.[name],
-      toString: () => "<namespace>"
-    } as BrnFun;
+    // __obj: objektový literál
+    this.globals.def("__obj", {
+      arity: null,
+      call: (_i, args) => {
+        const o: Record<string, any> = {};
+        for (let i = 0; i < args.length; i += 2) o[String(args[i])] = args[i+1];
+        return o;
+      },
+      toString: () => "<builtin __obj>"
+    } as BrnFun);
   }
 
   private installStd() {
@@ -269,7 +270,7 @@ export class Interpreter {
     };
     this.globals.def("text", ns(text));
 
-    /* šalát.* (array) */
+    /* šalát.* */
     const salat: Record<string, BrnFun> = {
       "je":     { arity:1, call:(_,[x])=>Array.isArray(x), toString(){return"<šalát.je>"} },
       "vem":    { arity:2, call:(_,[a,i])=>a?.[Number(i)], toString(){return"<šalát.vem>"} },
@@ -285,7 +286,7 @@ export class Interpreter {
     };
     this.globals.def("šalát", ns(salat));
 
-    /* mapa.* (object) */
+    /* mapa.* */
     const mapa: Record<string, BrnFun> = {
       "vytvor": { arity:0, call:()=>({}), toString(){return"<mapa.vytvor>"} },
       "vem":    { arity:2, call:(_,[m,k])=>m?.[k], toString(){return"<mapa.vem>"} },
@@ -400,10 +401,52 @@ export class Interpreter {
         if (!self.caps.fsEnabled) return denyFS();
         const { stat } = await import("node:fs/promises");
         const s = await stat(String(p));
-        return (s as any).toJSON();
+        return {
+          isFile: s.isFile(),
+          isDirectory: s.isDirectory(),
+          size: s.size,
+          dev: (s as any).dev,
+          ino: (s as any).ino,
+          mode: (s as any).mode,
+          nlink: (s as any).nlink,
+          uid: (s as any).uid,
+          gid: (s as any).gid,
+          rdev: (s as any).rdev,
+          blksize: (s as any).blksize,
+          blocks: (s as any).blocks,
+          atimeMs: s.atimeMs,
+          mtimeMs: s.mtimeMs,
+          ctimeMs: s.ctimeMs,
+          birthtimeMs: s.birthtimeMs,
+          atime: s.atime.toISOString(),
+          mtime: s.mtime.toISOString(),
+          ctime: s.ctime.toISOString(),
+          birthtime: s.birthtime.toISOString(),
+        };
       }, toString(){return"<šufle.info>"} },
     };
     this.globals.def("šufle", ns(sufle));
+
+    /* šmirgl.* (helper na typy) */
+    const smirgl: Record<string, BrnFun> = {
+      "typy": { arity: 1, call: (_,[o])=>{
+        const out: Record<string,string> = {};
+        if (o && typeof o === "object") {
+          for (const k of Object.keys(o)) {
+            const v = o[k];
+            out[k] = Array.isArray(v) ? "pole"
+              : v === null ? "null"
+              : typeof v === "number" ? "číslo"
+              : typeof v === "string" ? "řetězec"
+              : typeof v === "boolean" ? (v ? "pravda" : "nepravda")
+              : typeof v === "function" ? "funkce"
+              : "mapa";
+          }
+        }
+        return out;
+      }, toString(){return"<šmirgl.typy>"} }
+    };
+    this.globals.def("šmirgl", ns(smirgl));
 
     function denyFS(){ throw new Error("FS je vypnutý (spusť s --unsafe-fs)."); }
   }

@@ -14,7 +14,7 @@ export class Parser {
   /* -------- Declarations / Top-level -------- */
   private decl(): Stmt {
     if (this.try(T.NECH)) return this.letDecl();
-    if (this.try(T.ROB))  return this.fnDecl();
+    if (this.try(T.ROB))  return this.fnDecl(); // pouze top-level/stmt varianta
     return this.stmt();
   }
 
@@ -282,8 +282,6 @@ export class Parser {
     return e;
   }
 
-  private call(): Expr { return this.postfixOrMember(); } // zpětně kompatibilní
-
   private primary(): Expr {
     if (this.try(T.Number)) return { k: "Lit", v: this.prev().lit };
     if (this.try(T.String)) return { k: "Lit", v: this.prev().lit };
@@ -293,7 +291,7 @@ export class Parser {
     if (this.try(T.Identifier)) return { k: "Var", n: this.prev().lit as string };
     if (this.try(T.LParen)) { const e = this.expr(); this.expect(T.RParen, "Čekám ')'"); return e; }
 
-    // Array literál: [a, b, c] → __arr(a, b, c)
+    // Array literal
     if (this.try(T.LBracket)) {
       const args: Expr[] = [];
       if (!this.is(T.RBracket)) {
@@ -301,6 +299,38 @@ export class Parser {
       }
       this.expect(T.RBracket, "Čekám ']'");
       return { k: "Call", callee: { k: "Var", n: "__arr" }, args };
+    }
+
+    // Object literal
+    if (this.try(T.LBrace)) {
+      const kvArgs: Expr[] = [];
+      if (!this.is(T.RBrace)) {
+        do {
+          let keyStr: string;
+          if (this.try(T.Identifier)) keyStr = this.prev().lit as string;
+          else if (this.try(T.String)) keyStr = String(this.prev().lit);
+          else throw this.err("Čekám klíč objektu (identifikátor nebo string)");
+          this.expect(T.Colon, "Čekám ':' za klíčem objektu");
+          const val = this.expr();
+          kvArgs.push({ k: "Lit", v: keyStr } as Expr, val);
+        } while (this.try(T.Comma));
+      }
+      this.expect(T.RBrace, "Čekám '}'");
+      return { k: "Call", callee: { k: "Var", n: "__obj" }, args: kvArgs };
+    }
+
+    // Function expression: rob (params) { body }
+    if (this.try(T.ROB)) {
+      this.expect(T.LParen, "Čekám '(' po 'rob' (funce ve výrazu)");
+      const params: string[] = [];
+      if (!this.is(T.RParen)) {
+        do { params.push(this.expect(T.Identifier, "Čekám jméno parametru").lit as string); }
+        while (this.try(T.Comma));
+      }
+      this.expect(T.RParen, "Čekám ')'");
+      this.expect(T.LBrace, "Čekám '{' za parametry funkce");
+      const body = this.block().body;
+      return { k: "FunExpr", params, body };
     }
 
     throw this.err("Čekám výraz");
