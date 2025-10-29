@@ -1,0 +1,140 @@
+// === ZÁKLADY: proměnné, výpis, funkce, rekurze ===
+nech x = 42 piča
+nech zprava = "Ahoj z Brna " piča
+vyblij(zprava + x) piča
+
+// alias na vyblij
+řekni("alias funguje") piča
+
+// mocnění, aritmetika, porovnání
+nech a = 2 piča
+a = a ** 8 piča
+vyblij("2 ** 8 = " + a) piča
+vyblij("a > 100? " + (a > 100)) piča
+
+// rekurze
+rob fib(n) {
+  esli (n < 2) vrat n piča
+  vrat fib(n - 1) + fib(n - 2) piča
+}
+vyblij("fib(10) = " + fib(10)) piča
+
+// === LOGIKA, NULLISH ===
+nech možná = null piča
+vyblij("nullish: " + (možná ?? "náhrada")) piča
+nech t = rožni piča
+nech f = zhasni piča
+vyblij("logika && ||: " + (t && zhasni || rožni)) piča
+
+// === SLOŽENÉ PŘIŘAZENÍ, POSTFIX ++/-- ===
+nech i = 0 piča
+i += 5 piča
+vyblij("i po += 5 = " + i) piča
+vyblij("postfix i++ vrací starou hodnotu: " + (i++)) piča
+vyblij("i po i++ = " + i) piča
+vyblij("postfix i-- vrací starou hodnotu: " + (i--)) piča
+vyblij("i po i-- = " + i) piča
+
+// === WHILE (šalina), BREAK/CONTINUE ===
+nech j = 0 piča
+šalina (j < 5) {
+  j += 1 piča
+  esli (j == 2) { přeskoč piča }  // continue
+  esli (j == 4) { vyblij("vypadávám na j=4") piča vypadni piča } // break
+  vyblij("šalina j=" + j) piča
+}
+
+// === FOR-LIKE (okruh) ===
+okruh (nech k = 0 piča k < 3 piča k++) {
+  vyblij("okruh k=" + k) piča
+}
+
+// === TRY/CATCH/FINALLY ===
+zkus {
+  házej("úmyslná chyba") piča
+} chyť (e) {
+  vyblij("chytil jsem: " + e) piča
+} potom {
+  vyblij("finally proběhl") piča
+}
+
+// === ČAS A SLEEP (async) ===
+nech start = čas.teď() piča
+vyblij("usínám na 200ms…") piča
+čas.usni(200) piča
+nech end = čas.teď() piča
+vyblij("vzbuzen: " + (end - start) + " ms od startu") piča
+
+// === TEXTOVÉ FUNKCE ===
+nech s = "Šalina jede do Komárova" piča
+vyblij( text.malý(s) ) piča
+vyblij( text.velký(s) ) piča
+vyblij( text.díl(s, 7, 4) ) piča
+vyblij( text.obsahuje(s, "jede") ) piča
+nech roz = text.řež(s, " ") piča
+vyblij( "split count=" + (šalát.dl(roz)) ) piča
+vyblij( text.spojuj(roz, "|") ) piča
+vyblij( text.trim("  čau  ") ) piča
+
+// === REGEX ===
+vyblij( "regl.najdi: " + regl.najdi("abc123def", "\\d+") ) piča
+nech vseci = regl.všeci("x1 y22 z333", "\\d+") piča
+vyblij( "regl.všeci -> " + text.spojuj(vseci, ",") ) piča
+vyblij( regl.nahrad("banán banán", "na", "NA") ) piča
+
+// === POLE (šalát.*) ===
+nech arr = [1,2,3,4,5] piča   // syntakticky ok: pole literal přebírá JS notaci u evaluace
+vyblij( "arr dl=" + šalát.dl(arr) ) piča
+šalát.hoď(arr, 6) piča
+vyblij( "hoď → dl=" + šalát.dl(arr) ) piča
+nech arr2 = šalát.mapuj(arr, rob (x, idx) { vrat x * 2 piča }) piča
+vyblij( "mapuj *2 → " + text.spojuj(arr2, ",") ) piča
+nech arr3 = šalát.filtruj(arr2, rob (x) { vrat x > 6 piča }) piča
+vyblij( "filtruj >6 → " + text.spojuj(arr3, ",") ) piča
+nech suma = šalát.spočítej(arr, rob (acc, x) { vrat acc + x piča }, 0) piča
+vyblij( "reduce suma → " + suma ) piča
+
+// === MAPA/OBJEKT (mapa.*) ===
+nech m = mapa.vytvor() piča
+mapa.dej(m, "město", "Brno") piča
+mapa.dej(m, "linky", [1,2,3]) piča
+vyblij( "mapa keys=" + text.spojuj( mapa.keys(m), "," ) ) piča
+vyblij( "mapa values len=" + šalát.dl( mapa.values(m) ) ) piča
+vyblij( "mapa páry count=" + šalát.dl( mapa.páry(m) ) ) piča
+vyblij( "mapa.vem(m, 'město') = " + mapa.vem(m, "město") ) piča
+
+// === MATYŠ (matematika) ===
+vyblij( "abs(-7)=" + matyš.abs(-7) ) piča
+vyblij( "kolo(3.6)=" + matyš.kolo(3.6) ) piča
+vyblij( "moc(2,10)=" + matyš.moc(2,10) ) piča
+vyblij( "náhoda [0,1) ~ " + matyš.náhoda() ) piča
+vyblij( "náhodaMezi(3,7) ~ " + matyš.náhodaMezi(3,7) ) piča
+
+// === KRYPTO ===
+nech id = krypto.uuid() piča
+vyblij( "uuid: " + id ) piča
+nech h = krypto.sha256("brno") piča
+vyblij( "sha256('brno')=" + h ) piča
+nech b64 = krypto.base64("čau světe") piča
+vyblij( "base64=" + b64 ) piča
+vyblij( "zbase64=" + krypto.zbase64(b64) ) piča
+
+// === ŠICHTA (proces) ===
+vyblij( "argv len=" + šalát.dl( šichta.argv() ) ) piča
+vyblij( "NODE_ENV=" + (šichta.env("NODE_ENV") ?? "není") ) piča
+
+// === TYPY, DEBUG ===
+vyblij( "typ(123) → " + typ(123) ) piča
+vyblij( "typ([1]) → " + typ([1]) ) piča
+vyblij( "šmirgl.typy({a:1}) → " + text.spojuj( mapa.keys( šmirgl.typy({a:1}) ), "," ) ) piča
+
+// === IMPORT (vokno) – obalíme do try/catch, ať skript nespadne, když soubor není ===
+zkus {
+  vyblij("Zkouším importovat examples/modul.brn") piča
+  vokno "examples/modul.brn" piča
+} chyť (e) {
+  vyblij("Import selhal (OK, jen test): " + e) piča
+}
+
+// === KONCOVKA ===
+vyblij("Hotovo – BrnoSkript prošel demo testy") piča

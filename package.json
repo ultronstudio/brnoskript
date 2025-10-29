@@ -1,0 +1,22 @@
+{
+  "name": "brnoskript",
+  "author": {
+    "name": "Petr Vurm",
+    "url": "https://petrvurm.cz"
+  },
+  "version": "0.2.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "brn": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "repl": "node dist/cli.js",
+    "run": "node dist/cli.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.2",
+    "typescript": "^5.6.3"
+  }
+}
