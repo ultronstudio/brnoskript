@@ -4,7 +4,7 @@
     "name": "Petr Vurm",
     "url": "https://petrvurm.cz"
   },
-  "version": "0.2.0",
+  "version": "1.0.0",
   "type": "module",
   "private": true,
   "bin": {
@@ -13,10 +13,18 @@
   "scripts": {
     "build": "tsc -p .",
     "repl": "node dist/cli.js",
-    "run": "node dist/cli.js"
+    "run": "node dist/cli.js",
+    "build:web": "rollup -c rollup.config.mjs"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.9",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
     "@types/node": "^24.9.2",
-    "typescript": "^5.6.3"
+    "rollup": "^4.52.5",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "tslib": "^2.8.1"
   }
 }
