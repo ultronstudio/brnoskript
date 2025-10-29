@@ -8,7 +8,6 @@
   "publisher": "ultronstudio",
   "version": "1.0.0",
   "type": "module",
-  "private": true,
   "bin": {
     "brn": "dist/cli.js"
   },
